@@ -50,6 +50,7 @@ import {
 import { saveAutoSnapshot, getSnapshots, WorkflowSnapshot, saveWorkflowToFile } from './services/storageService';
 import { ToastContainer, ToastMessage, ToastType } from './components/ui/Toast';
 import { RestoreModal } from './components/ui/RestoreModal';
+import { SettingsModal } from './components/ui/SettingsModal';
 import { Activity } from 'lucide-react';
 
 const nodeTypes = {
@@ -108,6 +109,10 @@ const BananaFlow = () => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [savedSnapshots, setSavedSnapshots] = useState<WorkflowSnapshot[]>([]);
   const [isRestored, setIsRestored] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [apiKey, setApiKey] = useState<string>(() => {
+    return localStorage.getItem('GEMINI_API_KEY') || '';
+  });
   const { screenToFlowPosition, fitView, getNodes, getEdges } = useReactFlow<AppNode, AppEdge>();
 
   const addToast = useCallback((message: string, type: ToastType = 'info') => {
@@ -456,12 +461,36 @@ const BananaFlow = () => {
       }, 50);
   }, [hydrateNode, setNodes, setEdges, fitView, addToast]);
 
+  // Handle API Key Settings
+  const handleSaveApiKey = useCallback((key: string) => {
+    localStorage.setItem('GEMINI_API_KEY', key);
+    setApiKey(key);
+    // Update the API key in geminiService
+    (window as any).GEMINI_API_KEY = key;
+    addToast('API Key 已保存', 'success');
+  }, [addToast]);
+
   return (
     <div className="flex h-screen w-screen bg-black overflow-hidden font-sans relative">
       <Sidebar 
           onSave={handleSaveWorkflow} 
-          onRestore={handleRestoreWorkflow} 
+          onLoad={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                try {
+                  const flow = JSON.parse(event.target?.result as string);
+                  handleRestoreWorkflow(flow);
+                } catch (err) {
+                  addToast('导入失败', 'error');
+                }
+              };
+              reader.readAsText(file);
+            }
+          }}
           onClear={() => { setNodes([]); setEdges([]); }} 
+          onOpenSettings={() => setShowSettingsModal(true)}
       />
       <div className="flex-grow h-full relative" ref={reactFlowWrapper}>
         <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onDrop={onDrop} onDragOver={(e)=>e.preventDefault()} nodeTypes={nodeTypes} fitView className="bg-black">
@@ -479,6 +508,12 @@ const BananaFlow = () => {
             }, 100);
       }} />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <SettingsModal 
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        currentApiKey={apiKey}
+        onSaveApiKey={handleSaveApiKey}
+      />
     </div>
   );
 };
