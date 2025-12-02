@@ -1,14 +1,15 @@
 import React, { useRef } from 'react';
 import { NodeType } from '../types';
-import { MessageSquare, Wand2, Paintbrush, Sparkles, Brush, Upload, Save, Trash2, Video, ShoppingBag } from 'lucide-react';
+import { MessageSquare, Wand2, Paintbrush, Sparkles, Brush, Upload, Save, Trash2, Video, ShoppingBag, Settings } from 'lucide-react';
 
 interface SidebarProps {
   onSave?: () => void;
   onLoad?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onClear?: () => void;
+  onOpenSettings?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onSave, onLoad, onClear }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onSave, onLoad, onClear, onOpenSettings }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onDragStart = (event: React.DragEvent, nodeType: NodeType) => {
@@ -124,6 +125,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSave, onLoad, onClear }) => 
             >
                 <Trash2 size={14} />
                 清空画布
+            </button>
+            <button 
+                onClick={onOpenSettings}
+                className="flex items-center justify-center gap-2 bg-yellow-900/30 hover:bg-yellow-900/50 text-yellow-200 py-2 px-3 rounded text-xs border border-yellow-900/50 transition-colors"
+                title="设置 API Key"
+            >
+                <Settings size={14} />
             </button>
          </div>
 
