@@ -16,7 +16,8 @@ import {
   PenTool,
   ScanText,
   Expand,
-  Minimize2
+  Minimize2,
+  Settings
 } from 'lucide-react';
 import { parseWorkflowFile } from '../services/storageService';
 
@@ -24,9 +25,10 @@ interface SidebarProps {
   onSave?: () => void;
   onRestore?: (flow: { nodes: AppNode[]; edges: AppEdge[] }) => void;
   onClear?: () => void;
+  onOpenSettings?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onSave, onRestore, onClear }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onSave, onRestore, onClear, onOpenSettings }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onDragStart = (event: React.DragEvent, nodeType: NodeType) => {
@@ -228,6 +230,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSave, onRestore, onClear }) 
             >
                 <Trash2 size={14} />
                 清空画布
+            </button>
+            <button 
+                onClick={onOpenSettings}
+                className="flex items-center justify-center gap-2 bg-yellow-900/30 hover:bg-yellow-900/50 text-yellow-200 py-2 px-3 rounded text-xs border border-yellow-900/50 transition-colors"
+                title="设置 API Key"
+            >
+                <Settings size={14} />
             </button>
          </div>
 
