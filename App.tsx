@@ -51,7 +51,6 @@ import { saveAutoSnapshot, getSnapshots, WorkflowSnapshot, saveWorkflowToFile } 
 import { ToastContainer, ToastMessage, ToastType } from './components/ui/Toast';
 import { RestoreModal } from './components/ui/RestoreModal';
 import { SettingsModal } from './components/ui/SettingsModal';
-import { RechargeModal } from './components/ui/RechargeModal';
 import { Activity } from 'lucide-react';
 
 const nodeTypes = {
@@ -111,12 +110,8 @@ const BananaFlow = () => {
   const [savedSnapshots, setSavedSnapshots] = useState<WorkflowSnapshot[]>([]);
   const [isRestored, setIsRestored] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem('GEMINI_API_KEY') || '';
-  });
-  const [userCredits, setUserCredits] = useState<number>(() => {
-    return parseInt(localStorage.getItem('USER_CREDITS') || '0');
   });
   const { screenToFlowPosition, fitView, getNodes, getEdges } = useReactFlow<AppNode, AppEdge>();
 
@@ -517,14 +512,6 @@ const BananaFlow = () => {
     addToast('API Key 已保存', 'success');
   }, [addToast]);
 
-  // Handle Recharge Success
-  const handleRechargeSuccess = useCallback((credits: number) => {
-    const newTotal = userCredits + credits;
-    setUserCredits(newTotal);
-    localStorage.setItem('USER_CREDITS', newTotal.toString());
-    addToast(`充值成功！获得 ${credits} 点数`, 'success');
-  }, [userCredits, addToast]);
-
   return (
     <div className="flex h-screen w-screen bg-black overflow-hidden font-sans relative">
       <Sidebar 
@@ -546,8 +533,6 @@ const BananaFlow = () => {
           }}
           onClear={() => { setNodes([]); setEdges([]); }} 
           onOpenSettings={() => setShowSettingsModal(true)}
-          onOpenRecharge={() => setShowRechargeModal(true)}
-          userCredits={userCredits}
       />
       <div className="flex-grow h-full relative" ref={reactFlowWrapper}>
         <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onDrop={onDrop} onDragOver={(e)=>e.preventDefault()} nodeTypes={nodeTypes} fitView className="bg-black">
@@ -570,12 +555,6 @@ const BananaFlow = () => {
         onClose={() => setShowSettingsModal(false)}
         currentApiKey={apiKey}
         onSaveApiKey={handleSaveApiKey}
-      />
-      <RechargeModal 
-        isOpen={showRechargeModal}
-        onClose={() => setShowRechargeModal(false)}
-        currentCredits={userCredits}
-        onRechargeSuccess={handleRechargeSuccess}
       />
     </div>
   );
