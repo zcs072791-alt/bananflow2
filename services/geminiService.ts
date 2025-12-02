@@ -1,7 +1,32 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NodeType, CharacterAttributes, PoseLandmark } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Dynamic API Key getter - supports both localStorage and environment variables
+const getApiKey = (): string => {
+  // First check localStorage (user-provided key)
+  if (typeof window !== 'undefined') {
+    const localKey = localStorage.getItem('GEMINI_API_KEY');
+    if (localKey && localKey.trim()) {
+      return localKey.trim();
+    }
+    // Check window global (set by App.tsx)
+    if ((window as any).GEMINI_API_KEY) {
+      return (window as any).GEMINI_API_KEY;
+    }
+  }
+  // Fallback to environment variable (Netlify build-time injection)
+  if (process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  // Throw error if no API key found
+  throw new Error('API key is missing. Please provide a valid API key.');
+};
+
+// Lazy initialization of GoogleGenAI with dynamic API key
+const getAI = () => {
+  const apiKey = getApiKey();
+  return new GoogleGenAI({ apiKey });
+};
 
 const cleanBase64 = (data: string) => {
   if (data.includes(',')) {
@@ -98,7 +123,7 @@ export const generateImage = async (prompt: string, referenceImages?: string[], 
       } else {
           parts.push({ text: prompt });
       }
-      const response = await ai.models.generateContent({
+      const response = await getAI().models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts },
         config: { imageConfig: { aspectRatio: aspectRatio as any } }
@@ -116,7 +141,7 @@ export const sketchToImage = async (prompt: string, sketch: string): Promise<str
         parts.push({ inlineData: { mimeType: 'image/png', data: cleanBase64(sketch) } });
         const controlPrompt = `STRICT STRUCTURAL ADHERENCE REQUIRED. The attached image is a specific composition sketch. Preserve structure. Instruction: ${prompt}`;
         parts.push({ text: controlPrompt });
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: { imageConfig: { aspectRatio: '1:1' } }
@@ -137,7 +162,7 @@ export const analyzeCharacter = async (image: string): Promise<CharacterAttribut
             Return JSON with style, head, eyes, nose, mouth, expression, clothing, upper_body, lower_body, shoes, held_item, feature_points.
             IMPORTANT: All string values for descriptions (style, clothing, etc.) MUST be in Simplified Chinese (简体中文).
         `;
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: {
                 parts: [
@@ -210,7 +235,7 @@ export const identifyElementAtPoint = async (image: string, x: number, y: number
             img.src = formatBase64Image(image);
         });
         const prompt = `Identify the specific object/feature at the RED CIRCLE. Return ONLY the name in Simplified Chinese (简体中文). Do not include any other text.`;
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ inlineData: { mimeType: 'image/png', data: cleanBase64(markedImageBase64) } }, { text: prompt }] }
         });
@@ -249,7 +274,7 @@ export const generateCharacterFromAttributes = async (originalImage: string, att
         }
         parts.push({ text: prompt });
 
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: { imageConfig: { aspectRatio: '1:1' } }
@@ -393,7 +418,7 @@ export const describePose = async (image: string): Promise<string> => {
             Keep it short and descriptive. Do not use lists. One or two sentences.
             Example: "人物侧身站立，头向左转，左手高举过头顶，右手自然下垂，双腿交叉。"
         `;
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ inlineData: { mimeType: 'image/png', data: cleanBase64(image) } }, { text: prompt }] }
         });
@@ -447,7 +472,7 @@ export const generateFromPose = async (originalImage: string | undefined, skelet
         
         parts.push({ text: instruction });
 
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: { imageConfig: { aspectRatio: aspectRatio as any } }
@@ -481,7 +506,7 @@ export const generatePoseFromText = async (originalImage: string, prompt: string
         `;
         parts.push({ text: instruction });
         
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: { imageConfig: { aspectRatio: aspectRatio as any } }
@@ -576,7 +601,7 @@ export const generateEcommerceImage = async (
             parts.push({ text: instruction });
         }
 
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: { imageConfig: { aspectRatio: '3:4' } } // Portrait for fashion usually
@@ -602,7 +627,7 @@ export const generateSpriteSheet = async (prompt: string, referenceImage?: strin
               const parts: any[] = [];
               if (referenceImage) parts.push({ inlineData: { mimeType: 'image/png', data: cleanBase64(referenceImage) } });
               parts.push({ text: seqPrompt });
-              const response = await ai.models.generateContent({
+              const response = await getAI().models.generateContent({
                 model: 'gemini-2.5-flash-image',
                 contents: { parts },
                 config: { imageConfig: { aspectRatio: modelRatio as any } }
@@ -623,7 +648,7 @@ export const generateSpriteSheet = async (prompt: string, referenceImage?: strin
 
 export const editImage = async (image: string, prompt: string): Promise<string> => {
     return scheduleGeminiRequest(async () => {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: [{ inlineData: { mimeType: 'image/png', data: cleanBase64(image) } }, { text: `Edit instruction: ${prompt}. Keep the composition similar.` }] }
         });
@@ -636,7 +661,7 @@ export const editImage = async (image: string, prompt: string): Promise<string> 
 
 export const enhanceImage = async (image: string): Promise<string> => {
     return scheduleGeminiRequest(async () => {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: [{ inlineData: { mimeType: 'image/png', data: cleanBase64(image) } }, { text: "Enhance this image quality. Make it sharper, more detailed, and higher resolution." }] }
         });
@@ -649,7 +674,7 @@ export const enhanceImage = async (image: string): Promise<string> => {
 
 export const inpaintImage = async (image: string, mask: string, prompt: string): Promise<string> => {
     return scheduleGeminiRequest(async () => {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: [{ inlineData: { mimeType: 'image/png', data: cleanBase64(image) } }, { inlineData: { mimeType: 'image/png', data: cleanBase64(mask) } }, { text: `Inpaint the masked area (white) with: ${prompt}. Blending seamlessly.` }] }
         });
@@ -663,7 +688,7 @@ export const inpaintImage = async (image: string, mask: string, prompt: string):
 export const extendImage = async (image: string, prompt: string, direction: string, aspectRatio: string): Promise<string> => {
      return scheduleGeminiRequest(async () => {
         const dirMap: Record<string, string> = { 'up': 'Extend upwards.', 'down': 'Extend downwards.', 'left': 'Extend left.', 'right': 'Extend right.', 'zoom-out': 'Zoom out all directions.' };
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: [{ inlineData: { mimeType: 'image/png', data: cleanBase64(image) } }, { text: `${dirMap[direction] || 'Extend.'} ${prompt}. Seamless integration.` }] },
             config: { imageConfig: { aspectRatio: aspectRatio as any } }
@@ -679,14 +704,14 @@ export const generateVideo = async (prompt: string, image?: string, aspectRatio:
     let operation;
     const cleanPrompt = prompt || "Animate this";
     if (image) {
-        operation = await ai.models.generateVideos({
+        operation = await getAI().models.generateVideos({
             model: 'veo-3.1-fast-generate-preview',
             prompt: cleanPrompt,
             image: { imageBytes: cleanBase64(image), mimeType: 'image/png' },
             config: { numberOfVideos: 1, aspectRatio: aspectRatio as any, resolution: '720p' }
         });
     } else {
-        operation = await ai.models.generateVideos({
+        operation = await getAI().models.generateVideos({
             model: 'veo-3.1-fast-generate-preview',
             prompt: cleanPrompt,
             config: { numberOfVideos: 1, aspectRatio: aspectRatio as any, resolution: '720p' }
@@ -694,18 +719,18 @@ export const generateVideo = async (prompt: string, image?: string, aspectRatio:
     }
     while (!operation.done) {
         await sleep(5000);
-        operation = await ai.operations.getVideosOperation({operation: operation});
+        operation = await getAI().operations.getVideosOperation({operation: operation});
     }
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!videoUri) throw new Error("Video generation failed");
-    const vidResponse = await fetch(`${videoUri}&key=${process.env.API_KEY}`);
+    const vidResponse = await fetch(`${videoUri}&key=${getApiKey()}`);
     const vidBlob = await vidResponse.blob();
     return URL.createObjectURL(vidBlob);
 };
 
 export const imageToText = async (image: string): Promise<string> => {
     return scheduleGeminiRequest(async () => {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ inlineData: { mimeType: 'image/png', data: cleanBase64(image) } }, { text: "Describe this image in detail in Simplified Chinese. Focus on visual elements, style, lighting, and composition for use as an image generation prompt." }] }
         });
@@ -716,7 +741,7 @@ export const imageToText = async (image: string): Promise<string> => {
 export interface WorkflowPlan { description: string; nodes: any[]; edges: any[]; shouldClearCanvas?: boolean; }
 
 export const planWorkflow = async (userInput: string, attachedImage?: string): Promise<WorkflowPlan> => {
-     const response = await ai.models.generateContent({
+     const response = await getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [{ text: `You are an AI assistant for 'BananaFlow'... Return JSON plan... User: "${userInput}". Ensure the "description" field is in Simplified Chinese.` }],
         config: { responseMimeType: 'application/json' }
