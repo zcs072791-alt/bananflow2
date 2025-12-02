@@ -14,10 +14,6 @@
   # Netlify will inject GEMINI_API_KEY from environment variables
   # Make sure to set it in: Site settings → Environment variables
 
-# Ignore mise.toml if it exists
-[build.ignore]
-  command = "git diff --quiet HEAD^ HEAD ."
-
 [dev]
   command = "npm run dev"
   port = 3000
